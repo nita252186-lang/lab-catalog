@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดขึ้นทะเบียน Lab Catalog - โรงพยาบาลสมเด็จภาณุรักษ์ / ม.อ.</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Sarabun & Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS for Exporting real Excel files -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item.active {
+            background-color: #006b3f;
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(0, 107, 63, 0.2);
+        }
+        .sidebar-subitem.active {
+            color: #006b3f;
+            font-weight: 700;
+            background-color: #e6f4ed;
+            border-left: 4px solid #006b3f;
+        }
+        /* Modal Backdrop */
+        .modal-blur {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- HEADER BAR -->
+    <header class="bg-[#005a32] text-white h-16 flex items-center justify-between px-6 shadow-md z-30 shrink-0">
+        <div class="flex items-center gap-3">
+            <!-- Hospital Emblem Icon -->
+            <div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                <i class="fa-solid fa-hospital-user text-xl text-amber-400"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold leading-tight tracking-wide flex items-center gap-2">
+                    ระบบจัดขึ้นทะเบียน Lab Catalog
+                    <span class="text-[10px] bg-amber-500 text-slate-900 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Smart Revenue v1.0</span>
+                </h1>
+                <p id="headerHospitalName" class="text-xs text-emerald-100/90 font-light">โรงพยาบาลสมเด็จภาณุรักษ์ (มหาวิทยาลัยสงขลานครินทร์)</p>
+            </div>
+        </div>
+
+        <!-- Right Header Elements -->
+        <div class="flex items-center gap-6 text-sm">
+            <!-- Date Time Ticker -->
+            <div class="text-right hidden md:block">
+                <div id="liveClock" class="font-mono text-xs font-semibold text-emerald-200">14-08-2569 10:32:45</div>
+                <div class="text-[10px] text-emerald-100/70">ระบบเชื่อมต่อ HIS Online</div>
+            </div>
+
+            <!-- User Profile Badge -->
+            <div class="flex items-center gap-3 bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-full border border-white/10 transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center text-white font-bold border border-emerald-400 text-xs">
+                    <i class="fa-solid fa-user-gear"></i>
+                </div>
+                <div class="text-left hidden sm:block">
+                    <p id="headerUserName" class="text-xs font-bold leading-none">อรนงค์ จันทร์เจริญ</p>
+                    <p id="headerUserRole" class="text-[10px] text-emerald-200 leading-tight">ฝ่ายเทคโนโลยีสารสนเทศ</p>
+                </div>
+                <i class="fa-solid fa-chevron-down text-xs text-emerald-200 ml-1"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER (SIDEBAR + CONTENT) -->
+    <div class="flex flex-1 overflow-hidden relative">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 z-20 overflow-y-auto">
+            <div class="p-3 space-y-1">
+                
+                <!-- 1. หน้าหลัก -->
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="sidebar-item active w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100">
+                    <i class="fa-solid fa-house w-5 text-center"></i>
+                    <span>หน้าหลัก</span>
+                </button>
+
+                <div class="pt-3 pb-1 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    เมนูการใช้งาน
+                </div>
+
+                <!-- 2. รายงาน Lab ที่ยังไม่ขึ้นทะเบียน -->
+                <button onclick="switchTab('unregistered')" id="nav-unregistered" class="sidebar-item w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-file-circle-exclamation w-5 text-center text-purple-600"></i>
+                        <span class="text-xs font-medium">1. รายงาน Lab ที่ยังไม่ขึ้นทะเบียน</span>
+                    </div>
+                    <span id="badge-unregistered-count" class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">124</span>
+                </button>
+
+                <!-- 3. ขึ้นทะเบียน Lab (Accordion / Submenu) -->
+                <div class="space-y-0.5">
+                    <button onclick="toggleRegisterMenu()" class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 font-medium">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-file-export w-5 text-center text-emerald-600"></i>
+                            <span class="text-xs font-medium">2. ขึ้นทะเบียน Lab</span>
+                        </div>
+                        <i id="registerMenuChevron" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                    </button>
+                    
+                    <div id="registerSubmenu" class="pl-9 pr-2 space-y-1 py-1">
+                        <button onclick="switchTab('register-step1')" id="nav-step1" class="sidebar-subitem w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-600 hover:bg-slate-100 flex items-center justify-between">
+                            <span>2.1 นำเข้าข้อมูลจาก Excel</span>
+                            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                        </button>
+                        <button onclick="switchTab('register-step2')" id="nav-step2" class="sidebar-subitem w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-600 hover:bg-slate-100 flex items-center justify-between">
+                            <span>2.2 ระบุข้อมูลที่ขาด</span>
+                            <i class="fa-solid fa-pen-to-square text-amber-500"></i>
+                        </button>
+                        <button onclick="switchTab('register-step3')" id="nav-step3" class="sidebar-subitem w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-600 hover:bg-slate-100 flex items-center justify-between">
+                            <span>2.3 แปลงไฟล์ (D+A Logic)</span>
+                            <i class="fa-solid fa-gear text-blue-600"></i>
+                        </button>
+                        <button onclick="switchTab('register-step4')" id="nav-step4" class="sidebar-subitem w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-600 hover:bg-slate-100 flex items-center justify-between">
+                            <span>2.4 ส่ง Mail (Outlook)</span>
+                            <i class="fa-solid fa-paper-plane text-sky-600"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. นำไฟล์ตอบกลับเข้าระบบ HIS -->
+                <button onclick="switchTab('import-his')" id="nav-import-his" class="sidebar-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100">
+                    <i class="fa-solid fa-file-import w-5 text-center text-blue-600"></i>
+                    <span class="text-xs font-medium">3. นำไฟล์ตอบกลับเข้าระบบ HIS</span>
+                </button>
+
+                <div class="pt-4 pb-2">
+                    <button onclick="switchTab('summary-report')" id="nav-summary-report" class="w-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 text-xs font-bold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm">
+                        <i class="fa-solid fa-chart-line text-emerald-600"></i>
+                        <span>รายงานสรุปการขึ้นทะเบียน</span>
+                    </button>
+                </div>
+
+                <!-- ตั้งค่าระบบ -->
+                <button onclick="switchTab('settings')" id="nav-settings" class="sidebar-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100">
+                    <i class="fa-solid fa-gear w-5 text-center text-slate-500"></i>
+                    <span class="text-xs font-medium">ตั้งค่าระบบ</span>
+                </button>
+
+            </div>
+
+            <!-- FOOTER NOTICE (Matching the original image) -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 space-y-1">
+                <p class="font-medium text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-headset text-emerald-600"></i>
+                    <span>พบปัญหาการใช้งาน แจ้งฝ่าย IT</span>
+                </p>
+                <p class="text-slate-600">โทร. 1950 (อรนงค์)</p>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
+                    <span>หมายเลข HIS: <strong class="text-slate-600 font-mono">68000</strong></span>
+                    <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono">v1.0</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEW PANE -->
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-100 relative">
+
+            <!-- TAB 1: DASHBOARD (HOME) -->
+            <div id="tab-dashboard" class="space-y-6">
+                <!-- Welcome Banner -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h2 id="welcomeHeading" class="text-xl font-bold text-slate-800">ยินดีต้อนรับสู่ระบบจัดขึ้นทะเบียน Lab Catalog</h2>
+                        <p class="text-xs text-slate-500 mt-1">ระบบบริหารจัดการและป้องกันความเสี่ยงรายได้จากการขึ้นทะเบียนรายการตรวจห้องปฏิบัติการ (Smart Revenue Control Tower)</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <button onclick="switchTab('register-step1')" class="bg-[#006b3f] hover:bg-[#005a32] text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>เริ่มต้นขึ้นทะเบียน Lab ใหม่</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 KPI CARDS (Matching image exact numbers & styling) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    
+                    <!-- Card 1: Lab ที่ยังไม่ขึ้นทะเบียน -->
+                    <div class="bg-white p-5 rounded-xl border border-purple-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-file-circle-exclamation"></i>
+                            </div>
+                            <div id="kpi-unregistered" class="text-3xl font-extrabold text-purple-900 font-mono">124</div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs font-bold text-slate-600">Lab ที่ยังไม่ขึ้นทะเบียน</p>
+                            <p class="text-[11px] text-purple-600 font-medium mt-0.5">พบสั่งตรวจใน HIS แต่ยังไม่มีใน Master</p>
+                            <button onclick="switchTab('unregistered')" class="w-full mt-3 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold py-1.5 rounded-lg border border-purple-200 transition-colors">
+                                ดูรายงาน
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: รอขึ้นทะเบียน -->
+                    <div class="bg-white p-5 rounded-xl border border-emerald-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <div id="kpi-pending" class="text-3xl font-extrabold text-emerald-800 font-mono">86</div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs font-bold text-slate-600">รอขึ้นทะเบียน</p>
+                            <p class="text-[11px] text-emerald-600 font-medium mt-0.5">เตรียมนำส่งไฟล์เข้ากองทุน</p>
+                            <button onclick="switchTab('register-step1')" class="w-full mt-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded-lg border border-emerald-200 transition-colors">
+                                ดูรายการ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: ส่งขึ้นทะเบียนแล้ว -->
+                    <div class="bg-white p-5 rounded-xl border border-amber-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </div>
+                            <div id="kpi-sent" class="text-3xl font-extrabold text-amber-800 font-mono">42</div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs font-bold text-slate-600">ส่งขึ้นทะเบียนแล้ว</p>
+                            <p class="text-[11px] text-amber-600 font-medium mt-0.5">อยู่ระหว่างการพิจารณาจาก สปสช./สกส.</p>
+                            <button onclick="switchTab('register-step4')" class="w-full mt-3 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold py-1.5 rounded-lg border border-amber-200 transition-colors">
+                                ดูรายการ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: ตอบกลับจาก สปสช. -->
+                    <div class="bg-white p-5 rounded-xl border border-sky-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-box-archive"></i>
+                            </div>
+                            <div id="kpi-replied" class="text-3xl font-extrabold text-sky-800 font-mono">28</div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs font-bold text-slate-600">ตอบกลับจาก สปสช.</p>
+                            <p class="text-[11px] text-sky-600 font-medium mt-0.5">พร้อมนำเข้าอนุมัติในระบบ HIS</p>
+                            <button onclick="switchTab('import-his')" class="w-full mt-3 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold py-1.5 rounded-lg border border-sky-200 transition-colors">
+                                ดูรายการ
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- BOTTOM GRID: Notifications & Shortcuts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- LEFT 2 COLS: การแจ้งเตือน (Notifications) -->
+                    <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-amber-500"></i>
+                                <span>การแจ้งเตือน</span>
+                            </h3>
+                            <span class="text-xs text-slate-400">อัปเดตล่าสุด: วันนี้</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <!-- Alert Item 1 -->
+                            <div class="p-3 bg-amber-50/60 border border-amber-200/80 rounded-lg flex items-start gap-3 hover:bg-amber-50 transition-colors">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-sm shrink-0 mt-0.5">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-xs font-bold text-slate-800">มี Lab ที่ยังไม่ขึ้นทะเบียน <span class="text-amber-700 font-mono">124</span> รายการ</p>
+                                        <span class="text-[10px] text-slate-400 font-mono">14-08-2569 09:15</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600 mt-0.5">รวมเคสวิกฤตผ่าตัดหัวใจค่ารักษา 2,000,000 บาท ถูกล็อกโดยรายการปัสสาวะ 50 บาท</p>
+                                </div>
+                            </div>
+
+                            <!-- Alert Item 2 -->
+                            <div class="p-3 bg-sky-50/60 border border-sky-200/80 rounded-lg flex items-start gap-3 hover:bg-sky-50 transition-colors">
+                                <div class="w-8 h-8 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-sm shrink-0 mt-0.5">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-xs font-bold text-slate-800">ไฟล์การขึ้นทะเบียน <span class="text-sky-700 font-mono">42</span> รายการ ได้รับการตอบกลับจาก สปสช.</p>
+                                        <span class="text-[10px] text-slate-400 font-mono">14-08-2569 08:50</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600 mt-0.5">ตรวจสอบความถูกต้องแล้ว พร้อมซิงค์รหัสเข้า Master DB ใน HIS</p>
+                                </div>
+                            </div>
+
+                            <!-- Alert Item 3 -->
+                            <div class="p-3 bg-rose-50/60 border border-rose-200/80 rounded-lg flex items-start gap-3 hover:bg-rose-50 transition-colors">
+                                <div class="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-sm shrink-0 mt-0.5">
+                                    <i class="fa-solid fa-copy"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-xs font-bold text-slate-800">กรุณาตรวจสอบข้อมูล Lab ที่มีความซ้ำซ้อน <span class="text-rose-700 font-mono">5</span> รายการ</p>
+                                        <span class="text-[10px] text-slate-400 font-mono">14-08-2569 08:30</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600 mt-0.5">พบช่วงเวลาเริ่มใช้และสิ้นสุดซ้ำซ้อนกัน (Overlap) ต้องปรับด้วย D+A Logic</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT 1 COL: ทางลัด (Shortcuts) -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-amber-500"></i>
+                                <span>ทางลัด</span>
+                            </h3>
+
+                            <div class="space-y-2.5">
+                                <button onclick="switchTab('unregistered')" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 p-3 rounded-lg text-xs font-bold text-left flex items-center gap-3 transition-all">
+                                    <div class="w-7 h-7 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 shrink-0">
+                                        <i class="fa-solid fa-file-circle-exclamation"></i>
+                                    </div>
+                                    <span>รายงาน Lab ที่ยังไม่ขึ้นทะเบียน</span>
+                                </button>
+
+                                <button onclick="switchTab('register-step1')" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 p-3 rounded-lg text-xs font-bold text-left flex items-center gap-3 transition-all">
+                                    <div class="w-7 h-7 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </div>
+                                    <span>เริ่มขึ้นทะเบียน Lab</span>
+                                </button>
+
+                                <button onclick="switchTab('import-his')" class="w-full bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200 p-3 rounded-lg text-xs font-bold text-left flex items-center gap-3 transition-all">
+                                    <div class="w-7 h-7 rounded-full bg-sky-200 flex items-center justify-center text-sky-700 shrink-0">
+                                        <i class="fa-solid fa-file-import"></i>
+                                    </div>
+                                    <span>นำไฟล์ตอบกลับเข้าระบบ HIS</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- System Status Indicator -->
+                        <div class="mt-6 pt-3 border-t border-slate-100 text-center">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                สถานะระบบ: พร้อมใช้งาน (HIS Gateway Normal)
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB 2: UNREGISTERED LABS REPORT (RED LIST) -->
+            <div id="tab-unregistered" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-purple-900 flex items-center gap-2">
+                            <i class="fa-solid fa-file-circle-exclamation text-purple-600"></i>
+                            <span>รายงาน Lab ที่สั่งตรวจแล้ว แต่ยังไม่ได้ขึ้นทะเบียน (Red List Alert)</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">ดักจับรายการสั่งตรวจจริงใน HIS ที่ยังขาดการขึ้นทะเบียน ป้องกันความเสี่ยงเงินติด C</p>
+                    </div>
+                    <button onclick="queueSelectedForRegistration()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus"></i>
+                        <span>นำรายการที่เลือก ไปขึ้นทะเบียน</span>
+                    </button>
+                </div>
+
+                <!-- High Risk Alert Case Study Banner -->
+                <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="text-2xl text-amber-600"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div>
+                            <p class="text-xs font-bold text-amber-900">Use Case เตือนภัย: "แล็บ 50 บาท ล็อกเงิน 2 ล้านบาท"</p>
+                            <p class="text-[11px] text-amber-800">ตรวจพบเคสผ่าตัดหัวใจยอดเบิก 2,000,000 บาท มีรายการตรวจปัสสาวะ Urinalysis (50 บาท) ที่ยังไม่ขึ้นทะเบียนเบิกจ่าย ทำให้บิลดีดติด C ทั้งใบ</p>
+                        </div>
+                    </div>
+                    <span class="bg-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">High Financial Impact</span>
+                </div>
+
+                <!-- Unregistered Labs Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <input type="text" id="unregisteredSearch" onkeyup="filterUnregisteredTable()" placeholder="ค้นหารายการแล็บ / รหัส / กลุ่มโรค..." class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 w-72 focus:outline-none focus:border-purple-600">
+                        <span class="text-xs text-slate-500 font-mono">พบทั้งหมด: <strong id="unregisteredCountText" class="text-purple-700">124</strong> รายการ</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-purple-900 text-white font-bold text-[11px]">
+                                    <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAllUnregistered" onclick="toggleSelectAllUnregistered(this)"></th>
+                                    <th class="p-3">รหัสแล็บ (LcCode)</th>
+                                    <th class="p-3">ชื่อรายการตรวจ (Lab Name)</th>
+                                    <th class="p-3">กลุ่มการผ่าตัด/เคสรักษา</th>
+                                    <th class="p-3 text-right">ราคาแล็บ</th>
+                                    <th class="p-3 text-right">มูลค่าบิลเคสรวม (Risk)</th>
+                                    <th class="p-3 text-center">สถานะความเสี่ยง</th>
+                                    <th class="p-3 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unregisteredTableBody" class="divide-y divide-slate-100 font-mono">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: STEP 2.1 - EXCEL IMPORT -->
+            <div id="tab-register-step1" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="bg-emerald-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2.1</span>
+                        <span>ขึ้นทะเบียน Lab: นำเข้าข้อมูลจาก Excel</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">อัปโหลดไฟล์ Mapping รายการตรวจ (LcCode + TMLT) เพื่อเข้าสู่กระบวนการจัดทำ 18 แฟ้มมาตรฐาน</p>
+                </div>
+
+                <!-- File Dropzone -->
+                <div class="bg-white p-8 rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all text-center flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-800">ลากไฟล์ Excel มาวางที่นี่ หรือกดเลือกไฟล์</p>
+                        <p class="text-xs text-slate-400 mt-1">รองรับไฟล์ .xlsx, .xls, .csv ตามรูปแบบโครงสร้างกรมบัญชีกลาง</p>
+                    </div>
+                    <div class="flex items-center gap-3 mt-2">
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+                        <button onclick="document.getElementById('excelFileInput').click()" class="bg-[#006b3f] hover:bg-[#005a32] text-white text-xs font-bold px-5 py-2 rounded-lg shadow-sm">
+                            เลือกไฟล์จากเครื่อง
+                        </button>
+                        <button onclick="loadSampleDataset()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold px-4 py-2 rounded-lg">
+                            <i class="fa-solid fa-[#006b3f] fa-database"></i> โหลดข้อมูลตัวอย่าง (86 รายการ)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Loaded Data Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-[#006b3f] fa-table-cells"></i>
+                            <span>ตัวอย่างข้อมูลที่นำเข้า (Preview Input Data)</span>
+                        </h3>
+                        <span id="importStatusBadge" class="bg-slate-100 text-slate-600 text-[11px] font-mono px-2.5 py-1 rounded-full">ยังไม่ได้เลือกไฟล์</span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-72">
+                        <table class="w-full text-left text-xs border-collapse font-mono">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                    <th class="p-2">LcCode</th>
+                                    <th class="p-2">TMLT</th>
+                                    <th class="p-2">LOINC</th>
+                                    <th class="p-2">ชื่อรายการ Lab</th>
+                                    <th class="p-2 text-right">ราคา</th>
+                                    <th class="p-2">สิทธิการเบิก</th>
+                                    <th class="p-2">สถานะนำเข้า</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importedPreviewBody" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="7" class="p-8 text-center text-slate-400 italic">กรุณาอัปโหลดไฟล์ หรือกด "โหลดข้อมูลตัวอย่าง" เพื่อดำเนินการต่อ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="switchTab('register-step2')" id="btnGoToStep2" disabled class="bg-slate-300 text-slate-500 font-bold text-xs px-6 py-2 rounded-lg cursor-not-allowed flex items-center gap-2">
+                            <span>ถัดไป: 2.2 ระบุข้อมูลที่ขาด</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: STEP 2.2 - MISSING DATA EDITOR -->
+            <div id="tab-register-step2" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span class="bg-amber-500 text-slate-900 font-bold w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2.2</span>
+                            <span>ขึ้นทะเบียน Lab: ระบุข้อมูลที่ขาดและตรวจสอบความถูกต้อง</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">ระบบตรวจสอบความสมบูรณ์ของคอลัมน์มาตรฐาน และช่วยเติมข้อมูลที่ขาดโดยอัตโนมัติ</p>
+                    </div>
+                    <button onclick="autoFixMissingData()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Auto-Fix เติมข้อมูลอัตโนมัติ</span>
+                    </button>
+                </div>
+
+                <!-- Missing Data Validation Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left text-xs border-collapse font-mono">
+                            <thead>
+                                <tr class="bg-slate-800 text-white font-bold">
+                                    <th class="p-2.5">LcCode</th>
+                                    <th class="p-2.5">ชื่อรายการ</th>
+                                    <th class="p-2.5">TMLT Code</th>
+                                    <th class="p-2.5">ChargeCat</th>
+                                    <th class="p-2.5 text-right">UnitPrice</th>
+                                    <th class="p-2.5">BenefitPlan</th>
+                                    <th class="p-2.5">UPDateBeg</th>
+                                    <th class="p-2.5">UPDateEnd</th>
+                                    <th class="p-2.5 text-center">ผลการตรวจ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="missingDataTableBody" class="divide-y divide-slate-100">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                        <button onclick="switchTab('register-step1')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-lg">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> ย้อนกลับ
+                        </button>
+                        <button onclick="switchTab('register-step3')" id="btnGoToStep3" class="bg-[#006b3f] hover:bg-[#005a32] text-white font-bold text-xs px-6 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                            <span>ถัดไป: 2.3 แปลงไฟล์ (Smart D+A Logic)</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: STEP 2.3 - FILE CONVERSION (D+A LOGIC) -->
+            <div id="tab-register-step3" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2.3</span>
+                            <span>ขึ้นทะเบียน Lab: แปลงไฟล์ตามมาตรฐาน 18 คอลัมน์ (Auto -1s Logic)</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">ประมวลผลตรรกะ D+A เพื่อตัดจบวันที่ทับซ้อน ($T_{end} = T_{begin} - 1s$) และจัดรูปแบบไฟล์มาตรฐาน</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="executeDALogic()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-microchip"></i>
+                            <span>ประมวลผล D+A Logic</span>
+                        </button>
+                        <button onclick="exportToExcel18Columns()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i>
+                            <span>ดาวน์โหลดไฟล์ .XLSX</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Formula Highlight Box -->
+                <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Automatic Date Overlap Prevention Engine</p>
+                        <p class="text-xs text-slate-300 mt-0.5">สูตรคำนวณวันสิ้นสุดของแถวเก่า (Flag D) เมื่อมีการอัปเดตรายการหรือราคาใหม่ (Flag A):</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg font-mono text-amber-400 font-bold text-sm">
+                        UPDateEnd (Old) = UPDateBeg (New) - 1 Second
+                    </div>
+                </div>
+
+                <!-- 18-Column Official Compliance Table View -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left text-[11px] border-collapse font-mono whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-[#003366] text-white">
+                                    <th class="p-2 border-r border-slate-700 text-center" colspan="13">Master Data Information (Standard 18 Columns)</th>
+                                    <th class="p-2 text-center" colspan="5">Scheme Specific Rules</th>
+                                </tr>
+                                <tr class="bg-slate-800 text-emerald-300 border-b border-slate-700">
+                                    <th class="p-2">LcCode</th>
+                                    <th class="p-2">TMLT</th>
+                                    <th class="p-2">LOINC</th>
+                                    <th class="p-2">Panel</th>
+                                    <th class="p-2">Name</th>
+                                    <th class="p-2">SFlag</th>
+                                    <th class="p-2">ChargeCat</th>
+                                    <th class="p-2 text-right">UnitPrice</th>
+                                    <th class="p-2">BenefitPlan</th>
+                                    <th class="p-2 text-center">UpdateFlag</th>
+                                    <th class="p-2">UPDateBeg</th>
+                                    <th class="p-2">UPDateEnd</th>
+                                    <th class="p-2">DateUpd</th>
+                                    <th class="p-2">BillGroup</th>
+                                    <th class="p-2">CsCode</th>
+                                    <th class="p-2 text-right">ReimbPrice</th>
+                                    <th class="p-2">RPDateBeg</th>
+                                    <th class="p-2">RPDateEnd</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table18ColumnsBody" class="divide-y divide-slate-100">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                        <button onclick="switchTab('register-step2')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-lg">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> ย้อนกลับ
+                        </button>
+                        <button onclick="switchTab('register-step4')" class="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-6 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                            <span>ถัดไป: 2.4 ส่ง Mail (Outlook)</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: STEP 2.4 - OUTLOOK MAIL INTEGRATION -->
+            <div id="tab-register-step4" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="bg-sky-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2.4</span>
+                        <span>ขึ้นทะเบียน Lab: ส่ง Mail ขึ้นทะเบียนถึงกองทุน สกส. / สปสช.</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">ร่างอีเมลอัตโนมัติพร้อมแนบไฟล์ 18 แฟ้ม (.xlsx) ส่งตรงถึงกองทุน</p>
+                </div>
+
+                <!-- Outlook Form Simulation Card -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-3xl mx-auto">
+                    <div class="bg-[#0078d4] text-white px-5 py-3 flex items-center justify-between">
+                        <span class="font-bold text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-envelope"></i>
+                            <span>Outlook Email Dispatcher</span>
+                        </span>
+                        <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono">Auto-Draft Generator</span>
+                    </div>
+
+                    <div class="p-6 space-y-4 text-xs">
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">ส่งถึง (To):</label>
+                            <input type="text" readonly value="labref@cat.chi.or.th (กองทุน สกส. กรมบัญชีกลาง)" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 font-mono text-slate-700">
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">หัวข้อ (Subject):</label>
+                            <input type="text" id="emailSubject" value="[10664] ขอขึ้นทะเบียนรายการตรวจ LabCatalog ใหม่ - รพ.สมเด็จภาณุรักษ์" class="w-full border border-slate-300 rounded px-3 py-2 font-bold text-slate-800">
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">ไฟล์แนบ (Attachment):</label>
+                            <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg flex items-center justify-between">
+                                <div class="flex items-center gap-2 font-mono text-emerald-900 font-bold">
+                                    <i class="fa-solid fa-file-excel text-emerald-600 text-lg"></i>
+                                    <span>10664_LABCAT_20260814_APPROVED.xlsx</span>
+                                </div>
+                                <span class="text-[10px] text-emerald-700 font-bold bg-emerald-200 px-2 py-0.5 rounded">ผ่านการตรวจสอบ 100%</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">เนื้อหาอีเมล (Body):</label>
+                            <textarea rows="5" class="w-full border border-slate-300 rounded p-3 text-slate-700 font-sans leading-relaxed">เรียน กองบริหารการรับจ่ายเงินชดเชยค่าบริการสาธารณสุข (สกส.)
+
+โรงพยาบาลสมเด็จภาณุรักษ์ ขอนำส่งไฟล์บัญชีรายการตรวจห้องปฏิบัติการอ้างอิง (LabCatalog) ตามโครงสร้าง 18 แฟ้มมาตรฐาน เพื่อขอขึ้นทะเบียนและปรับปรุงอัตราเบิกจ่าย
+
+จำนวนรายการทั้งสิ้น: 86 รายการ
+วันที่เริ่มมีผลบังคับใช้: 14/08/2569
+
+จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ
+อรนงค์ จันทร์เจริญ (ฝ่าย IT)</textarea>
+                        </div>
+
+                        <div class="pt-3 flex items-center justify-between border-t border-slate-100">
+                            <span class="text-slate-400 text-[11px]">ระบบจะอัปเดตสถานะเป็น "ส่งขึ้นทะเบียนแล้ว (42)"</span>
+                            <button onclick="sendMailSimulation()" class="bg-[#0078d4] hover:bg-sky-700 text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-sm flex items-center gap-2">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>ส่ง Mail ผ่าน Outlook</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: IMPORT HIS RESPONSE (3) -->
+            <div id="tab-import-his" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-file-import text-blue-600"></i>
+                            <span>3. นำไฟล์ตอบกลับจาก สกส./สปสช. เข้าระบบ HIS</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">อัปโหลดไฟล์อนุมัติผลตอบกลับจากกองทุน เพื่อซิงค์รหัสและปลดล็อกสถานะพร้อมเบิกจ่ายในระบบ HIS</p>
+                    </div>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">Automated Closed-Loop</span>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 transition-all text-center flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-800">อัปโหลดไฟล์ผลตอบกลับ (Response File from สกส.)</p>
+                        <p class="text-xs text-slate-400 mt-1">ไฟล์ตารางผลการพิจารณาที่มีสถานะ APPROVED / REJECTED</p>
+                    </div>
+                    <button onclick="simulateHISImport()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow-sm">
+                        <i class="fa-solid fa-rotate"></i> จำลองนำเข้าไฟล์ตอบกลับและซิงค์ HIS
+                    </button>
+                </div>
+
+                <!-- Sync Results Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center">
+                        <p class="text-xs text-emerald-700 font-bold">ขึ้นทะเบียนอนุมัติสำเร็จ (Approved)</p>
+                        <p id="hisApprovedCount" class="text-3xl font-extrabold text-emerald-800 font-mono mt-1">28</p>
+                        <p class="text-[10px] text-emerald-600 mt-1">ปลดล็อกสถานะ Ready to Bill ใน HIS แล้ว</p>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-center">
+                        <p class="text-xs text-rose-700 font-bold">ถูกปฏิเสธ (Rejected)</p>
+                        <p id="hisRejectedCount" class="text-3xl font-extrabold text-rose-800 font-mono mt-1">1</p>
+                        <p class="text-[10px] text-rose-600 mt-1">ส่งรายการเข้าระบบแก้ไข Red List</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
+                        <p class="text-xs text-slate-700 font-bold">เวลาที่ประหยัดได้ต่อรอบ</p>
+                        <p class="text-3xl font-extrabold text-slate-800 font-mono mt-1">177 นาที</p>
+                        <p class="text-[10px] text-slate-500 mt-1">จาก 3 ชั่วโมง เหลือเพียง 3 นาที</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 8: SUMMARY REPORT & ANALYTICS -->
+            <div id="tab-summary-report" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-600"></i>
+                        <span>รายงานสรุปการขึ้นทะเบียน (Institutional Revenue Analytics)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">สรุปภาพรวมผลกระทบเชิงสถาบัน ประสิทธิภาพการลดเวลา และการป้องกันรายได้รั่วไหล</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Chart 1: Time Reduction -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xs font-bold text-slate-700 mb-3">เปรียบเทียบระยะเวลาทำงาน (180 นาที vs 3 นาที)</h3>
+                        <div class="h-64">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Revenue Protection -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xs font-bold text-slate-700 mb-3">มูลค่ารายได้ที่พิทักษ์ได้ (Revenue Protected)</h3>
+                        <div class="h-64">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 9: SETTINGS -->
+            <div id="tab-settings" class="space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-gear text-slate-600"></i>
+                        <span>ตั้งค่าระบบ (System Configuration)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">กำหนดชื่อหน่วยงาน ผู้ใช้งาน และการเชื่อมต่อฐานข้อมูล HIS</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-2xl space-y-4 text-xs">
+                    <div>
+                        <label class="block text-slate-700 font-bold mb-1">ชื่อโรงพยาบาล/สถาบัน:</label>
+                        <select id="settingHospital" onchange="updateHospitalSetting()" class="w-full border border-slate-300 rounded px-3 py-2 font-bold text-slate-800">
+                            <option value="โรงพยาบาลสมเด็จภาณุรักษ์ (มหาวิทยาลัยสงขลานครินทร์)">โรงพยาบาลสมเด็จภาณุรักษ์ (มหาวิทยาลัยสงขลานครินทร์)</option>
+                            <option value="โรงพยาบาลสงขลานครินทร์ (ม.อ.)">โรงพยาบาลสงขลานครินทร์ (ม.อ.)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-700 font-bold mb-1">ชื่อผู้รับผิดชอบระบบ:</label>
+                        <input type="text" id="settingUserName" value="อรนงค์ จันทร์เจริญ" class="w-full border border-slate-300 rounded px-3 py-2 font-bold text-slate-800">
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-700 font-bold mb-1">ตำแหน่ง/ฝ่าย:</label>
+                        <input type="text" id="settingUserRole" value="ฝ่ายเทคโนโลยีสารสนเทศ" class="w-full border border-slate-300 rounded px-3 py-2 font-bold text-slate-800">
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex justify-end">
+                        <button onclick="saveSettings()" class="bg-[#006b3f] hover:bg-[#005a32] text-white font-bold text-xs px-5 py-2 rounded-lg">
+                            บันทึกการตั้งค่า
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- CUSTOM TOAST NOTIFICATION -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toastMessage">การดำเนินการเสร็จสมบูรณ์</span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // System Initial State
+        const state = {
+            unregisteredLabs: [
+                { id: 1, lcCode: 'LAB-URINE-01', name: 'Urinalysis (ตรวจปัสสาวะสมบูรณ์แบบ)', group: 'ผ่าตัดหัวใจ (Cardiothoracic Surgery)', price: 50, riskBill: 2000000, riskLevel: 'HIGH', selected: true },
+                { id: 2, lcCode: 'LAB-VITD-87', name: 'Vitamin D 25-OH Total', group: 'ผู้ป่วยวิกฤต ICU', price: 1200, riskBill: 850000, riskLevel: 'HIGH', selected: true },
+                { id: 3, lcCode: 'LAB-PCR-COVID', name: 'RT-PCR COVID Rapid', group: 'ปลูกถ่ายอวัวัยวะ (Transplant)', price: 1500, riskBill: 1200000, riskLevel: 'MEDIUM', selected: false },
+                { id: 4, lcCode: 'LAB-CARDIAC-T', name: 'Troponin-T High Sensitive', group: 'หัวใจขาดเลือดฉุกเฉิน (CCU)', price: 450, riskBill: 600000, riskLevel: 'HIGH', selected: false },
+                { id: 5, lcCode: 'LAB-TMLT-102', name: 'Lipid Profile Comprehensive', group: 'อายุรกรรมโรคหัวใจ', price: 400, riskBill: 350000, riskLevel: 'LOW', selected: false }
+            ],
+            importedLabs: [],
+            kpi: {
+                unregistered: 124,
+                pending: 86,
+                sent: 42,
+                replied: 28
+            }
+        };
+
+        // Live Clock Ticker
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.getDate().toString().padStart(2, '0') + '-' + 
+                            (now.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+                            (now.getFullYear() + 543) + ' ' + 
+                            now.toTimeString().split(' ')[0];
+            document.getElementById('liveClock').innerText = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Switch Sidebar Tabs
+        function switchTab(tabId) {
+            // Hide all tab views
+            const tabs = ['dashboard', 'unregistered', 'register-step1', 'register-step2', 'register-step3', 'register-step4', 'import-his', 'summary-report', 'settings'];
+            tabs.forEach(id => {
+                const el = document.getElementById('tab-' + id);
+                if (el) el.classList.add('hidden');
+                
+                const navEl = document.getElementById('nav-' + id);
+                if (navEl) {
+                    navEl.classList.remove('active');
+                }
+            });
+
+            // Show selected tab
+            const targetTab = document.getElementById('tab-' + tabId);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            const targetNav = document.getElementById('nav-' + tabId);
+            if (targetNav) targetNav.classList.add('active');
+
+            // Handle Submenu active highlight if inside step 1-4
+            if (tabId.startsWith('register-step')) {
+                document.getElementById('registerSubmenu').classList.remove('hidden');
+                document.getElementById('registerMenuChevron').classList.add('rotate-180');
+            }
+
+            // Render specific views on demand
+            if (tabId === 'unregistered') renderUnregisteredTable();
+            if (tabId === 'register-step2') renderMissingDataTable();
+            if (tabId === 'register-step3') render18ColumnsTable();
+            if (tabId === 'summary-report') initCharts();
+        }
+
+        // Toggle Accordion
+        function toggleRegisterMenu() {
+            const submenu = document.getElementById('registerSubmenu');
+            const chevron = document.getElementById('registerMenuChevron');
+            submenu.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        // Render Unregistered Labs Table (Red List Alert)
+        function renderUnregisteredTable() {
+            const tbody = document.getElementById('unregisteredTableBody');
+            tbody.innerHTML = '';
+
+            state.unregisteredLabs.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 text-center">
+                        <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="toggleSelectUnregistered(${item.id})">
+                    </td>
+                    <td class="p-3 font-bold text-slate-800">${item.lcCode}</td>
+                    <td class="p-3 font-sans font-medium text-slate-700">${item.name}</td>
+                    <td class="p-3 font-sans text-slate-600">${item.group}</td>
+                    <td class="p-3 text-right font-bold text-slate-800">${item.price.toLocaleString()} ฿</td>
+                    <td class="p-3 text-right font-extrabold text-amber-600">${item.riskBill.toLocaleString()} ฿</td>
+                    <td class="p-3 text-center">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.riskLevel === 'HIGH' ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-700'}">
+                            ${item.riskLevel === 'HIGH' ? 'ล็อกบิลเงินจม' : 'เสี่ยงติด C'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="queueSingleForRegistration(${item.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded border border-emerald-200">
+                            + ขึ้นทะเบียน
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('unregisteredCountText').innerText = state.unregisteredLabs.length;
+        }
+
+        function toggleSelectUnregistered(id) {
+            const item = state.unregisteredLabs.find(i => i.id === id);
+            if (item) item.selected = !item.selected;
+        }
+
+        function toggleSelectAllUnregistered(masterCheckbox) {
+            state.unregisteredLabs.forEach(item => item.selected = masterCheckbox.checked);
+            renderUnregisteredTable();
+        }
+
+        function queueSelectedForRegistration() {
+            showToast('นำรายการที่เลือกเข้าคิวขึ้นทะเบียนแล้ว (86 รายการ)');
+            switchTab('register-step1');
+            loadSampleDataset();
+        }
+
+        function queueSingleForRegistration(id) {
+            showToast('ย้ายรายการเข้าสู่กระบวนการขึ้นทะเบียนแล้ว');
+            switchTab('register-step1');
+            loadSampleDataset();
+        }
+
+        // Step 2.1: Load Sample Dataset
+        function loadSampleDataset() {
+            state.importedLabs = [
+                { lcCode: 'LAB-URINE-01', tmlt: '350101', loinc: '24357-6', name: 'Urinalysis', price: 50, plan: 'CS', status: 'COMPLETE', dateBeg: '2569-08-14', dateEnd: '9999-12-31' },
+                { lcCode: 'LAB-VITD-87', tmlt: '310102', loinc: '14635-7', name: 'Vitamin D Total', price: 1200, plan: 'CS', status: 'COMPLETE', dateBeg: '2569-08-14', dateEnd: '9999-12-31' },
+                { lcCode: 'LAB-PCR-COVID', tmlt: '320015', loinc: '94500-6', name: 'RT-PCR COVID', price: 1500, plan: 'CS', status: 'MISSING_TMLT', dateBeg: '2569-08-14', dateEnd: '9999-12-31' },
+                { lcCode: 'LAB-CARDIAC-T', tmlt: '310998', loinc: '49563-0', name: 'Troponin-T HS', price: 450, plan: 'CS', status: 'COMPLETE', dateBeg: '2569-08-14', dateEnd: '9999-12-31' },
+                { lcCode: 'LAB-LIPID-PRO', tmlt: '310101', loinc: '2093-3', name: 'Lipid Profile', price: 400, plan: 'CS', status: 'PRICE_UPDATE', dateBeg: '2569-08-14', dateEnd: '9999-12-31' }
+            ];
+
+            const tbody = document.getElementById('importedPreviewBody');
+            tbody.innerHTML = '';
+
+            state.importedLabs.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-800">${item.lcCode}</td>
+                    <td class="p-2">${item.tmlt || '<span class="text-rose-500 font-bold">MISSING</span>'}</td>
+                    <td class="p-2 text-slate-500">${item.loinc}</td>
+                    <td class="p-2 font-sans font-medium text-slate-700">${item.name}</td>
+                    <td class="p-2 text-right font-bold">${item.price} ฿</td>
+                    <td class="p-2"><span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px] font-bold">${item.plan}</span></td>
+                    <td class="p-2">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'COMPLETE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                            ${item.status === 'COMPLETE' ? 'พร้อมแปลงไฟล์' : 'ต้องเติมข้อมูล'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('importStatusBadge').className = "bg-emerald-100 text-emerald-800 font-bold text-[11px] font-mono px-2.5 py-1 rounded-full";
+            document.getElementById('importStatusBadge').innerText = "นำเข้าสำเร็จ: 86 รายการ";
+
+            const btn2 = document.getElementById('btnGoToStep2');
+            btn2.disabled = false;
+            btn2.className = "bg-[#006b3f] hover:bg-[#005a32] text-white font-bold text-xs px-6 py-2 rounded-lg shadow-sm flex items-center gap-2 cursor-pointer";
+        }
+
+        // File Drag/Upload handler
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showToast('นำเข้าไฟล์ ' + file.name + ' เรียบร้อยแล้ว');
+                loadSampleDataset();
+            }
+        }
+
+        // Step 2.2: Render Missing Data Editor
+        function renderMissingDataTable() {
+            const tbody = document.getElementById('missingDataTableBody');
+            tbody.innerHTML = '';
+
+            state.importedLabs.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="p-2.5 font-bold text-slate-800">${item.lcCode}</td>
+                    <td class="p-2.5 font-sans font-medium text-slate-700">${item.name}</td>
+                    <td class="p-2.5">
+                        <input type="text" value="${item.tmlt}" onchange="updateLabItem(${index}, 'tmlt', this.value)" class="border border-slate-300 rounded px-2 py-1 text-xs w-24 font-mono font-bold text-slate-800 focus:border-amber-500">
+                    </td>
+                    <td class="p-2.5">06 (หมวดแล็บ)</td>
+                    <td class="p-2.5 text-right font-bold text-slate-800">${item.price} ฿</td>
+                    <td class="p-2.5"><span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">${item.plan}</span></td>
+                    <td class="p-2.5 text-slate-600">${item.dateBeg}</td>
+                    <td class="p-2.5 text-slate-600">${item.dateEnd}</td>
+                    <td class="p-2.5 text-center">
+                        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-check"></i> สมบูรณ์
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateLabItem(index, field, value) {
+            if (state.importedLabs[index]) {
+                state.importedLabs[index][field] = value;
+                showToast('อัปเดตข้อมูลรายการแล้ว');
+            }
+        }
+
+        function autoFixMissingData() {
+            state.importedLabs.forEach(item => {
+                if (!item.tmlt || item.tmlt === 'MISSING') item.tmlt = '320015';
+            });
+            renderMissingDataTable();
+            showToast('Auto-Fix เติมรหัส TMLT และข้อมูลที่ขาดเรียบร้อยแล้ว');
+        }
+
+        // Step 2.3: Render 18 Columns Table with D+A Logic (-1 Second)
+        function render18ColumnsTable() {
+            const tbody = document.getElementById('table18ColumnsBody');
+            tbody.innerHTML = '';
+
+            // Generate pairs of Flag D and Flag A to demonstrate -1s logic
+            const data18 = [
+                // Flag D (Delete old price row -1 sec)
+                { lcCode: 'LAB-LIPID-PRO', tmlt: '310101', loinc: '2093-3', panel: 'N', name: 'Lipid Profile (ราคาเดิม)', sflag: 'D', chargeCat: '06', unitPrice: 400, plan: 'CS', updateFlag: 'D', beg: '2568-01-01 00:00:00', end: '2569-08-13 23:59:59', upd: '2569-08-14', billGrp: '06', csCode: 'CS01', reimbPrice: 400, rpBeg: '2568-01-01', rpEnd: '2569-08-13' },
+                // Flag A (Add new price row)
+                { lcCode: 'LAB-LIPID-PRO', tmlt: '310101', loinc: '2093-3', panel: 'N', name: 'Lipid Profile (ราคาใหม่)', sflag: 'A', chargeCat: '06', unitPrice: 450, plan: 'CS', updateFlag: 'A', beg: '2569-08-14 00:00:00', end: '9999-12-31 23:59:59', upd: '2569-08-14', billGrp: '06', csCode: 'CS01', reimbPrice: 450, rpBeg: '2569-08-14', rpEnd: '9999-12-31' },
+                
+                // Normal Flag A rows
+                { lcCode: 'LAB-URINE-01', tmlt: '350101', loinc: '24357-6', panel: 'N', name: 'Urinalysis', sflag: 'A', chargeCat: '06', unitPrice: 50, plan: 'CS', updateFlag: 'A', beg: '2569-08-14 00:00:00', end: '9999-12-31 23:59:59', upd: '2569-08-14', billGrp: '06', csCode: 'CS01', reimbPrice: 50, rpBeg: '2569-08-14', rpEnd: '9999-12-31' },
+                { lcCode: 'LAB-VITD-87', tmlt: '310102', loinc: '14635-7', panel: 'N', name: 'Vitamin D Total', sflag: 'A', chargeCat: '06', unitPrice: 1200, plan: 'CS', updateFlag: 'A', beg: '2569-08-14 00:00:00', end: '9999-12-31 23:59:59', upd: '2569-08-14', billGrp: '06', csCode: 'CS01', reimbPrice: 1200, rpBeg: '2569-08-14', rpEnd: '9999-12-31' }
+            ];
+
+            data18.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = item.sflag === 'D' ? 'bg-amber-50 text-amber-900 border-b border-amber-200' : 'hover:bg-slate-50 border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="p-2 font-bold">${item.lcCode}</td>
+                    <td class="p-2">${item.tmlt}</td>
+                    <td class="p-2 text-slate-500">${item.loinc}</td>
+                    <td class="p-2 text-center">${item.panel}</td>
+                    <td class="p-2 font-sans font-medium text-slate-800">${item.name}</td>
+                    <td class="p-2 text-center font-bold ${item.sflag === 'D' ? 'text-amber-700' : 'text-emerald-700'}">${item.sflag}</td>
+                    <td class="p-2 text-center">${item.chargeCat}</td>
+                    <td class="p-2 text-right font-bold">${item.unitPrice}</td>
+                    <td class="p-2 text-center font-bold">${item.plan}</td>
+                    <td class="p-2 text-center font-bold ${item.updateFlag === 'D' ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800'}">${item.updateFlag}</td>
+                    <td class="p-2 text-slate-600">${item.beg}</td>
+                    <td class="p-2 font-bold ${item.updateFlag === 'D' ? 'text-amber-700 font-mono' : 'text-slate-600'}">${item.end}</td>
+                    <td class="p-2 text-slate-500">${item.upd}</td>
+                    <td class="p-2 text-center">${item.billGrp}</td>
+                    <td class="p-2 text-center">${item.csCode}</td>
+                    <td class="p-2 text-right font-bold">${item.reimbPrice}</td>
+                    <td class="p-2 text-slate-500">${item.rpBeg}</td>
+                    <td class="p-2 text-slate-500">${item.rpEnd}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function executeDALogic() {
+            showToast('ประมวลผล D+A Logic เรียบร้อยแล้ว (ตัดจบวันที่ทับซ้อนอัตโนมัติ)');
+            render18ColumnsTable();
+        }
+
+        // Export real Excel file using SheetJS
+        function exportToExcel18Columns() {
+            const data = [
+                ["LcCode", "TMLT", "LOINC", "Panel", "Name", "SFlag", "ChargeCat", "UnitPrice", "BenefitPlan", "UpdateFlag", "UPDateBeg", "UPDateEnd", "DateUpd", "BillGroup", "CsCode", "ReimbPrice", "RPDateBeg", "RPDateEnd"],
+                ["LAB-URINE-01", "350101", "24357-6", "N", "Urinalysis", "A", "06", 50, "CS", "A", "2569-08-14 00:00:00", "9999-12-31 23:59:59", "2569-08-14", "06", "CS01", 50, "2569-08-14", "9999-12-31"],
+                ["LAB-LIPID-PRO", "310101", "2093-3", "N", "Lipid Profile", "D", "06", 400, "CS", "D", "2568-01-01 00:00:00", "2569-08-13 23:59:59", "2569-08-14", "06", "CS01", 400, "2568-01-01", "2569-08-13"],
+                ["LAB-LIPID-PRO", "310101", "2093-3", "N", "Lipid Profile", "A", "06", 450, "CS", "A", "2569-08-14 00:00:00", "9999-12-31 23:59:59", "2569-08-14", "06", "CS01", 450, "2569-08-14", "9999-12-31"]
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "LabCatalog18Columns");
+            XLSX.writeFile(wb, "10664_LABCAT_20260814_APPROVED.xlsx");
+
+            showToast('ส่งออกไฟล์ 10664_LABCAT_20260814_APPROVED.xlsx สำเร็จแล้ว');
+        }
+
+        // Send Email Simulation
+        function sendMailSimulation() {
+            showToast('ส่งอีเมลร่างไฟล์ขึ้นทะเบียนถึง กรมบัญชีกลาง (labref@cat.chi.or.th) เรียบร้อยแล้ว');
+            state.kpi.sent += 1;
+            state.kpi.pending -= 1;
+            document.getElementById('kpi-sent').innerText = state.kpi.sent;
+            document.getElementById('kpi-pending').innerText = state.kpi.pending;
+            setTimeout(() => {
+                switchTab('import-his');
+            }, 1200);
+        }
+
+        // Simulate HIS Import
+        function simulateHISImport() {
+            showToast('ซิงค์ไฟล์ตอบกลับอนุมัติจาก สปสช./สกส. เข้าฐานข้อมูล Master HIS เรียบร้อยแล้ว');
+            state.kpi.replied += 1;
+            document.getElementById('kpi-replied').innerText = state.kpi.replied;
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById('toastNotification');
+            const msgSpan = document.getElementById('toastMessage');
+            msgSpan.innerText = message;
+            
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 3000);
+        }
+
+        // Settings Handling
+        function updateHospitalSetting() {
+            const val = document.getElementById('settingHospital').value;
+            document.getElementById('headerHospitalName').innerText = val;
+        }
+
+        function saveSettings() {
+            const name = document.getElementById('settingUserName').value;
+            const role = document.getElementById('settingUserRole').value;
+            
+            document.getElementById('headerUserName').innerText = name;
+            document.getElementById('headerUserRole').innerText = role;
+            
+            showToast('บันทึกการตั้งค่าระบบเรียบร้อยแล้ว');
+        }
+
+        // Analytics Charts
+        let chartsInitialized = false;
+        function initCharts() {
+            if (chartsInitialized) return;
+            chartsInitialized = true;
+
+            // Chart 1: Time Comparison
+            const ctx1 = document.getElementById('timeChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['กระบวนการเดิม (Manual)', 'LabCatalog Smart Revenue'],
+                    datasets: [{
+                        label: 'ระยะเวลาทำงาน (นาที)',
+                        data: [180, 3],
+                        backgroundColor: ['#cbd5e1', '#006b3f'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Chart 2: Revenue Protected
+            const ctx2 = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['รายได้ที่เบิกจ่ายสำเร็จ', 'เสี่ยงติด C (ป้องกันได้แล้ว)'],
+                    datasets: [{
+                        data: [18500000, 2000000],
+                        backgroundColor: ['#006b3f', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // Default initialization
+        window.onload = function() {
+            renderUnregisteredTable();
+        };
+    </script>
+</body>
+</html>
